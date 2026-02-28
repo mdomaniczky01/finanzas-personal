@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="MiFinanzas">
+<title>MiFinanzas</title>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --bg2: #111118;
+    --card: #16161f;
+    --card2: #1c1c28;
+    --border: #2a2a3a;
+    --text: #f0f0f8;
+    --muted: #8888aa;
+    --green: #00e5a0;
+    --red: #ff4d6d;
+    --blue: #4d9fff;
+    --purple: #a78bfa;
+    --yellow: #fbbf24;
+    --orange: #fb923c;
+    --pink: #f472b6;
+    --safe-top: env(safe-area-inset-top);
+    --safe-bottom: env(safe-area-inset-bottom);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body { background: var(--bg); color: var(--text); font-family: 'Sora', sans-serif; min-height: 100vh; overflow-x: hidden; }
+  #loading-screen { position: fixed; inset: 0; background: var(--bg); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 999; }
+  .loader-logo { font-size: 48px; margin-bottom: 16px; animation: pulse 1.5s infinite; }
+  .loader-text { font-size: 16px; font-weight: 600; color: var(--green); }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+  #auth-screen { display: none; min-height: 100vh; align-items: center; justify-content: center; padding: 24px; flex-direction: column; }
+  .auth-card { background: var(--card); border: 1px solid var(--border); border-radius: 24px; padding: 32px 24px; width: 100%; max-width: 400px; }
+  .auth-logo { font-size: 40px; text-align: center; margin-bottom: 8px; }
+  .auth-title { font-size: 22px; font-weight: 700; text-align: center; margin-bottom: 4px; }
+  .auth-sub { font-size: 13px; color: var(--muted); text-align: center; margin-bottom: 28px; }
+  .auth-tabs { display: flex; background: var(--card2); border-radius: 12px; padding: 4px; margin-bottom: 24px; }
+  .auth-tab { flex: 1; padding: 8px; border: none; background: transparent; color: var(--muted); font-size: 13px; font-weight: 600; border-radius: 9px; cursor: pointer; font-family: 'Sora', sans-serif; transition: all 0.2s; }
+  .auth-tab.active { background: var(--card); color: var(--text); }
+  .form-group { margin-bottom: 14px; }
+  .form-label { font-size: 11px; color: var(--muted); margin-bottom: 6px; display: block; text-transform: uppercase; letter-spacing: 0.5px; }
+  .form-input { width: 100%; background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; color: var(--text); font-size: 15px; font-family: 'Sora', sans-serif; outline: none; -webkit-appearance: none; }
+  .form-input:focus { border-color: var(--green); }
+  .btn-primary { width: 100%; background: var(--green); color: #000; border: none; padding: 14px; border-radius: 14px; font-size: 15px; font-weight: 700; cursor: pointer; font-family: 'Sora', sans-serif; margin-top: 4px; transition: opacity 0.2s; }
+  .btn-primary:active { opacity: 0.8; }
+  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+  .auth-error { color: var(--red); font-size: 13px; text-align: center; margin-top: 12px; min-height: 20px; }
+  #app-screen { display: none; padding: calc(var(--safe-top) + 16px) 16px calc(var(--safe-bottom) + 80px); }
+  .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+  .header-left h1 { font-size: 20px; font-weight: 700; letter-spacing: -0.5px; }
+  .header-left p { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .header-right { display: flex; gap: 8px; align-items: center; }
+  .btn-new { background: var(--green); color: #000; border: none; padding: 8px 14px; border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: 'Sora', sans-serif; }
+  .btn-logout { background: transparent; border: 1px solid var(--border); color: var(--muted); padding: 8px 10px; border-radius: 10px; font-size: 12px; cursor: pointer; font-family: 'Sora', sans-serif; }
+  .period-row { display: flex; gap: 8px; margin-bottom: 20px; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+  .period-row::-webkit-scrollbar { display: none; }
+  .period-btn { flex-shrink: 0; padding: 7px 16px; border-radius: 20px; font-size: 12px; font-weight: 500; cursor: pointer; border: 1px solid var(--border); background: transparent; color: var(--muted); font-family: 'Sora', sans-serif; transition: all 0.2s; }
+  .period-btn.active { background: var(--green); color: #000; border-color: var(--green); }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 18px; padding: 18px; margin-bottom: 16px; }
+  .card-title { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 4px; }
+  .card-value { font-size: 26px; font-weight: 700; letter-spacing: -1px; font-family: 'JetBrains Mono', monospace; }
+  .networth-card { background: linear-gradient(135deg, #0f1a14, #0a1520); border: 1px solid #1a3a2a; }
+  .networth-card .card-value { color: var(--green); }
+  .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+  .stat-card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 16px; }
+  .stat-label { font-size: 10px; color: var(--muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .stat-val { font-size: 18px; font-weight: 700; letter-spacing: -0.5px; font-family: 'JetBrains Mono', monospace; }
+  .stat-val.green { color: var(--green); }
+  .stat-val.red { color: var(--red); }
+  .stat-sub { font-size: 10px; color: var(--muted); margin-top: 2px; }
+  .chart-wrap { width: 100%; height: 130px; margin: 10px 0 0; }
+  .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+  .section-title { font-size: 15px; font-weight: 700; }
+  .see-all { font-size: 12px; color: var(--green); cursor: pointer; }
+  .asset-bar { height: 8px; border-radius: 4px; background: var(--card2); overflow: hidden; display: flex; margin: 10px 0; }
+  .asset-bar-seg { height: 100%; }
+  .legend-row { display: flex; flex-wrap: wrap; gap: 6px 12px; margin-bottom: 14px; }
+  .legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--muted); }
+  .legend-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .asset-row { display: flex; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--border); cursor: pointer; }
+  .asset-row:last-child { border-bottom: none; }
+  .asset-icon { width: 34px; height: 34px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 16px; margin-right: 12px; flex-shrink: 0; }
+  .asset-name { font-size: 13px; font-weight: 600; }
+  .asset-sub { font-size: 11px; color: var(--muted); }
+  .mini-bar-wrap { flex: 1; margin: 0 10px; height: 4px; background: var(--card2); border-radius: 2px; }
+  .mini-bar { height: 100%; border-radius: 2px; }
+  .asset-right { text-align: right; }
+  .asset-value { font-size: 13px; font-weight: 700; font-family: 'JetBrains Mono', monospace; }
+  .asset-pct { font-size: 10px; color: var(--muted); }
+  .tx-row { display: flex; align-items: center; padding: 11px 0; border-bottom: 1px solid var(--border); }
+  .tx-row:last-child { border-bottom: none; }
+  .tx-icon { width: 34px; height: 34px; background: var(--card2); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 15px; margin-right: 10px; flex-shrink: 0; }
+  .tx-name { font-size: 13px; font-weight: 500; }
+  .tx-cat { font-size: 10px; color: var(--muted); }
+  .tx-amount { margin-left: auto; font-size: 13px; font-weight: 700; font-family: 'JetBrains Mono', monospace; }
+  .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; height: calc(60px + var(--safe-bottom)); background: rgba(10,10,15,0.96); backdrop-filter: blur(20px); border-top: 1px solid var(--border); display: flex; align-items: flex-start; padding-top: 8px; z-index: 100; }
+  .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; cursor: pointer; padding: 6px 0; color: var(--muted); font-size: 10px; transition: color 0.2s; }
+  .nav-item.active { color: var(--green); }
+  .nav-icon { font-size: 20px; line-height: 1; }
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(10px); z-index: 200; display: none; align-items: flex-end; justify-content: center; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: var(--card); border: 1px solid var(--border); border-radius: 24px 24px 0 0; width: 100%; max-width: 600px; padding: 20px 20px calc(var(--safe-bottom) + 20px); max-height: 88vh; overflow-y: auto; }
+  .modal-handle { width: 36px; height: 4px; background: var(--border); border-radius: 2px; margin: 0 auto 20px; }
+  .modal-title { font-size: 18px; font-weight: 700; margin-bottom: 20px; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .btn-secondary { width: 100%; background: transparent; color: var(--muted); border: 1px solid var(--border); padding: 13px; border-radius: 14px; font-size: 14px; font-weight: 600; cursor: pointer; font-family: 'Sora', sans-serif; margin-top: 8px; }
+  .tab-row { display: flex; background: var(--card2); border-radius: 12px; padding: 4px; margin-bottom: 20px; }
+  .tab-btn { flex: 1; padding: 8px; border: none; background: transparent; color: var(--muted); font-size: 13px; font-weight: 600; border-radius: 9px; cursor: pointer; font-family: 'Sora', sans-serif; transition: all 0.2s; }
+  .tab-btn.active { background: var(--card); color: var(--text); }
+  select.form-input { appearance: none; -webkit-appearance: none; }
+  .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid #00000040; border-top-color: #000; border-radius: 50%; animation: spin 0.6s linear infinite; vertical-align: middle; margin-right: 6px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .fi-card { background: linear-gradient(135deg, #0d0a20, #150a1a); border: 1px solid #3a2a5a; border-radius: 18px; padding: 18px; margin-bottom: 16px; }
+  .fi-bar-bg { height: 10px; background: var(--card2); border-radius: 5px; overflow: hidden; margin: 12px 0 6px; }
+  .fi-bar { height: 100%; background: linear-gradient(90deg, var(--purple), var(--pink)); border-radius: 5px; transition: width 0.8s; }
+  .fi-label { font-size: 11px; color: var(--muted); }
+</style>
+</head>
+<body>
+
+<div id="loading-screen">
+  <div class="loader-logo">💰</div>
+  <div class="loader-text">MiFinanzas</div>
+</div>
+
+<div id="auth-screen">
+  <div class="auth-card">
+    <div class="auth-logo">💰</div>
+    <div class="auth-title">MiFinanzas</div>
+    <div class="auth-sub">Tu dashboard financiero personal</div>
+    <div class="auth-tabs">
+      <button class="auth-tab active" id="tab-login" onclick="switchAuthTab('login')">Iniciar sesión</button>
+      <button class="auth-tab" id="tab-register" onclick="switchAuthTab('register')">Registrarse</button>
+    </div>
+    <div id="login-form">
+      <div class="form-group"><label class="form-label">Email</label><input type="email" class="form-input" id="login-email" placeholder="tu@email.com" autocomplete="email"></div>
+      <div class="form-group"><label class="form-label">Contraseña</label><input type="password" class="form-input" id="login-pass" placeholder="••••••••" autocomplete="current-password"></div>
+      <button class="btn-primary" id="btn-login" onclick="doLogin()">Entrar</button>
+    </div>
+    <div id="register-form" style="display:none">
+      <div class="form-group"><label class="form-label">Tu nombre</label><input type="text" class="form-input" id="reg-name" placeholder="Mauri"></div>
+      <div class="form-group"><label class="form-label">Email</label><input type="email" class="form-input" id="reg-email" placeholder="tu@email.com" autocomplete="email"></div>
+      <div class="form-group"><label class="form-label">Contraseña</label><input type="password" class="form-input" id="reg-pass" placeholder="Mínimo 6 caracteres" autocomplete="new-password"></div>
+      <button class="btn-primary" id="btn-register" onclick="doRegister()">Crear cuenta</button>
+    </div>
+    <div class="auth-error" id="auth-error"></div>
+  </div>
+</div>
+
+<div id="app-screen">
+  <div class="header">
+    <div class="header-left"><h1 id="header-greeting">👋 Hola</h1><p id="header-date"></p></div>
+    <div class="header-right">
+      <button class="btn-logout" onclick="doLogout()">Salir</button>
+      <button class="btn-new" onclick="openModal('addModal')">+ Nuevo</button>
+    </div>
+  </div>
+  <div class="period-row">
+    <button class="period-btn active" onclick="setPeriod(this,7)">7D</button>
+    <button class="period-btn" onclick="setPeriod(this,30)">30D</button>
+    <button class="period-btn" onclick="setPeriod(this,90)">90D</button>
+    <button class="period-btn" onclick="setPeriod(this,180)">6M</button>
+    <button class="period-btn" onclick="setPeriod(this,365)">1A</button>
+  </div>
+  <div class="card networth-card">
+    <div class="card-title">Patrimonio Neto</div>
+    <div class="card-value" id="nw-value">₲ 0</div>
+    <div style="font-size:11px;color:var(--muted);margin-top:4px">Activos totales registrados</div>
+  </div>
+  <div class="stats-grid">
+    <div class="stat-card"><div class="stat-label">Ingresos</div><div class="stat-val green" id="stat-income">₲ 0</div><div class="stat-sub">período</div></div>
+    <div class="stat-card"><div class="stat-label">Gastos</div><div class="stat-val red" id="stat-expense">₲ 0</div><div class="stat-sub">período</div></div>
+    <div class="stat-card"><div class="stat-label">Superávit</div><div class="stat-val" id="stat-surplus" style="color:var(--blue)">₲ 0</div><div class="stat-sub">ahorro neto</div></div>
+    <div class="stat-card"><div class="stat-label">Tasa Ahorro</div><div class="stat-val" id="stat-rate" style="color:var(--purple)">0%</div><div class="stat-sub">de ingresos</div></div>
+  </div>
+  <div class="card">
+    <div class="section-header"><div><div class="card-title">Flujo de Caja</div><div style="font-size:11px;color:var(--muted)">Ingresos vs Gastos</div></div></div>
+    <div class="chart-wrap"><canvas id="flowChart"></canvas></div>
+  </div>
+  <div class="card" id="sankey-card">
+    <div class="section-header"><div><div class="card-title">Distribución de Flujo</div><div style="font-size:11px;color:var(--muted)">De dónde viene y adónde va tu dinero</div></div></div>
+    <div id="sankey-wrap" style="width:100%;overflow:hidden;"></div>
+  </div>
+  <div class="fi-card">
+    <div class="card-title" style="color:#c084fc">Meta Libertad Financiera</div>
+    <div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:6px">
+      <div style="font-size:18px;font-weight:700;color:#e879f9;font-family:'JetBrains Mono',monospace" id="fi-current">₲ 0 / mes</div>
+      <div style="font-size:11px;color:var(--muted)" id="fi-goal-label">Meta: ₲ 35M</div>
+    </div>
+    <div class="fi-bar-bg"><div class="fi-bar" id="fi-bar" style="width:0%"></div></div>
+    <div class="fi-label" id="fi-pct">0% alcanzado</div>
+  </div>
+  <div class="card">
+    <div class="section-header">
+      <span class="section-title">Activos <span style="color:var(--muted);font-weight:400;font-size:13px" id="assets-total"></span></span>
+      <span class="see-all" onclick="openModal('assetModal')">+ Agregar</span>
+    </div>
+    <div class="asset-bar" id="asset-bar"></div>
+    <div class="legend-row" id="asset-legend"></div>
+    <div id="asset-table"><div style="text-align:center;padding:20px 0;color:var(--muted);font-size:13px">Sin activos aún</div></div>
+  </div>
+  <div class="card">
+    <div class="section-header">
+      <span class="section-title">Movimientos</span>
+      <span class="see-all" onclick="openModal('addModal')">+ Agregar</span>
+    </div>
+    <div id="tx-list"><div style="text-align:center;padding:24px 0;color:var(--muted);font-size:13px">Sin movimientos</div></div>
+  </div>
+</div>
+
+<div class="bottom-nav">
+  <div class="nav-item active"><div class="nav-icon">◎</div><div>Dashboard</div></div>
+  <div class="nav-item" onclick="openModal('addModal')"><div class="nav-icon">＋</div><div>Agregar</div></div>
+  <div class="nav-item" onclick="openModal('assetModal')"><div class="nav-icon">◈</div><div>Activos</div></div>
+  <div class="nav-item" onclick="openModal('settingsModal')"><div class="nav-icon">⚙</div><div>Config</div></div>
+</div>
+
+<div class="modal-overlay" id="addModal" onclick="maybeClose(event,'addModal')">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Nuevo Movimiento</div>
+    <div class="tab-row">
+      <button class="tab-btn active" id="tab-expense" onclick="setTxType('expense')">Gasto</button>
+      <button class="tab-btn" id="tab-income" onclick="setTxType('income')">Ingreso</button>
+    </div>
+    <div class="form-group"><label class="form-label">Descripción</label><input type="text" class="form-input" id="tx-desc" placeholder="ej. Supermercado"></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Monto (₲)</label><input type="number" class="form-input" id="tx-amount" placeholder="0" inputmode="numeric"></div>
+      <div class="form-group"><label class="form-label">Fecha</label><input type="date" class="form-input" id="tx-date"></div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Categoría</label>
+      <select class="form-input" id="tx-cat">
+        <option value="Vivienda">🏠 Vivienda</option>
+        <option value="Comida">🍔 Comida</option>
+        <option value="Transporte">🚗 Transporte</option>
+        <option value="Salud">💊 Salud</option>
+        <option value="Entretenimiento">🎬 Entretenimiento</option>
+        <option value="Compras">🛍️ Compras</option>
+        <option value="Servicios">💡 Servicios</option>
+        <option value="Salario">💼 Salario</option>
+        <option value="Freelance">💻 Freelance</option>
+        <option value="Airbnb">🏡 Airbnb</option>
+        <option value="Inversiones">📈 Inversiones</option>
+        <option value="Otro">📦 Otro</option>
+      </select>
+    </div>
+    <button class="btn-primary" id="btn-save-tx" onclick="addTransaction()">Guardar</button>
+    <button class="btn-secondary" onclick="closeModal('addModal')">Cancelar</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="assetModal" onclick="maybeClose(event,'assetModal')">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Agregar Activo</div>
+    <div class="form-group"><label class="form-label">Nombre</label><input type="text" class="form-input" id="asset-name" placeholder="ej. Airbnb Los Laureles"></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Valor (₲)</label><input type="number" class="form-input" id="asset-value" placeholder="0" inputmode="numeric"></div>
+      <div class="form-group">
+        <label class="form-label">Tipo</label>
+        <select class="form-input" id="asset-type">
+          <option value="Propiedades">🏠 Propiedades</option>
+          <option value="Efectivo">💵 Efectivo</option>
+          <option value="Inversiones">📈 Inversiones</option>
+          <option value="Crypto">₿ Crypto</option>
+          <option value="Vehículos">🚗 Vehículos</option>
+          <option value="Otros">📦 Otros</option>
+        </select>
+      </div>
+    </div>
+    <button class="btn-primary" id="btn-save-asset" onclick="addAsset()">Guardar Activo</button>
+    <button class="btn-secondary" onclick="closeModal('assetModal')">Cancelar</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="settingsModal" onclick="maybeClose(event,'settingsModal')">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">⚙️ Configuración</div>
+    <div class="form-group"><label class="form-label">Tu nombre</label><input type="text" class="form-input" id="s-name" placeholder="Mauri"></div>
+    <div class="form-group"><label class="form-label">Meta ahorro mensual (₲)</label><input type="number" class="form-input" id="s-savings" placeholder="0" inputmode="numeric"></div>
+    <div class="form-group"><label class="form-label">Meta libertad financiera (₲/mes)</label><input type="number" class="form-input" id="s-fi" placeholder="35000000" inputmode="numeric"></div>
+    <button class="btn-primary" onclick="saveSettings()">Guardar configuración</button>
+    <button class="btn-secondary" onclick="closeModal('settingsModal')">Cerrar</button>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// CONFIG — Reemplazá con tus credenciales de Supabase
+// ============================================================
+const SUPABASE_URL = 'https://zkdtdmjsyhagwbqusbuu.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_OBpSKA8GDIvidnKVP8HJRw_AyK5bAWy';
+// ============================================================
+
+const { createClient } = supabase;
+const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let currentUser = null;
+let userSettings = { name: 'Usuario', savings_goal: 0, fi_goal: 35000000 };
+let transactions = [];
+let assets = [];
+let currentTxType = 'expense';
+let currentPeriodDays = 7;
+let flowChart = null;
+
+const ASSET_COLORS = { 'Propiedades':'#4d9fff','Efectivo':'#a78bfa','Inversiones':'#00e5a0','Crypto':'#fbbf24','Vehículos':'#f472b6','Otros':'#fb923c' };
+const CAT_ICONS = { 'Vivienda':'🏠','Comida':'🍔','Transporte':'🚗','Salud':'💊','Entretenimiento':'🎬','Compras':'🛍️','Servicios':'💡','Salario':'💼','Freelance':'💻','Airbnb':'🏡','Inversiones':'📈','Otro':'📦' };
+
+function fmt(n) {
+  if (n >= 1000000) return '₲ ' + (n/1000000).toFixed(1) + 'M';
+  if (n >= 1000) return '₲ ' + (n/1000).toFixed(0) + 'K';
+  return '₲ ' + Math.round(n).toLocaleString('es-PY');
+}
+
+function switchAuthTab(tab) {
+  document.getElementById('tab-login').classList.toggle('active', tab==='login');
+  document.getElementById('tab-register').classList.toggle('active', tab==='register');
+  document.getElementById('login-form').style.display = tab==='login' ? '' : 'none';
+  document.getElementById('register-form').style.display = tab==='register' ? '' : 'none';
+  document.getElementById('auth-error').textContent = '';
+}
+
+async function doLogin() {
+  const email = document.getElementById('login-email').value.trim();
+  const pass = document.getElementById('login-pass').value;
+  const btn = document.getElementById('btn-login');
+  if (!email || !pass) { showAuthError('Completá todos los campos'); return; }
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>Entrando...';
+  const { error } = await sb.auth.signInWithPassword({ email, password: pass });
+  btn.disabled = false; btn.textContent = 'Entrar';
+  if (error) showAuthError(error.message === 'Invalid login credentials' ? 'Email o contraseña incorrectos' : error.message);
+}
+
+async function doRegister() {
+  const name = document.getElementById('reg-name').value.trim();
+  const email = document.getElementById('reg-email').value.trim();
+  const pass = document.getElementById('reg-pass').value;
+  const btn = document.getElementById('btn-register');
+  if (!name || !email || !pass) { showAuthError('Completá todos los campos'); return; }
+  if (pass.length < 6) { showAuthError('La contraseña debe tener al menos 6 caracteres'); return; }
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>Creando cuenta...';
+  const { data, error } = await sb.auth.signUp({ email, password: pass });
+  btn.disabled = false; btn.textContent = 'Crear cuenta';
+  if (error) { showAuthError(error.message); return; }
+  if (data.user) {
+    await sb.from('settings').upsert({ user_id: data.user.id, name, savings_goal: 0, fi_goal: 35000000 });
+  }
+}
+
+function showAuthError(msg) { document.getElementById('auth-error').textContent = msg; }
+
+async function doLogout() {
+  await sb.auth.signOut();
+  transactions = []; assets = [];
+  showScreen('auth');
+}
+
+function showScreen(name) {
+  document.getElementById('loading-screen').style.display = 'none';
+  document.getElementById('auth-screen').style.display = name==='auth' ? 'flex' : 'none';
+  document.getElementById('app-screen').style.display = name==='app' ? 'block' : 'none';
+}
+
+async function loadData() {
+  const [txRes, assetRes, settRes] = await Promise.all([
+    sb.from('transactions').select('*').eq('user_id', currentUser.id).order('date', { ascending: false }),
+    sb.from('assets').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: false }),
+    sb.from('settings').select('*').eq('user_id', currentUser.id).single()
+  ]);
+  transactions = txRes.data || [];
+  assets = assetRes.data || [];
+  if (settRes.data) userSettings = settRes.data;
+  render();
+}
+
+function setPeriod(el, days) {
+  document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  currentPeriodDays = days;
+  render();
+}
+
+function getFilteredTxs() {
+  const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - currentPeriodDays);
+  return transactions.filter(t => new Date(t.date) >= cutoff);
+}
+
+function render() {
+  document.getElementById('header-greeting').textContent = '👋 Hola, ' + (userSettings.name || 'Mauri');
+  document.getElementById('header-date').textContent = new Date().toLocaleDateString('es-PY', { weekday: 'long', day: 'numeric', month: 'long' });
+  const txs = getFilteredTxs();
+  const income = txs.filter(t => t.type==='income').reduce((s,t) => s+t.amount, 0);
+  const expense = txs.filter(t => t.type==='expense').reduce((s,t) => s+t.amount, 0);
+  const surplus = income - expense;
+  const rate = income > 0 ? ((surplus/income)*100).toFixed(1) : 0;
+  const totalAssets = assets.reduce((s,a) => s+a.value, 0);
+  document.getElementById('stat-income').textContent = fmt(income);
+  document.getElementById('stat-expense').textContent = fmt(expense);
+  document.getElementById('stat-surplus').textContent = fmt(surplus);
+  document.getElementById('stat-surplus').style.color = surplus >= 0 ? 'var(--blue)' : 'var(--red)';
+  document.getElementById('stat-rate').textContent = rate + '%';
+  document.getElementById('nw-value').textContent = fmt(totalAssets);
+  document.getElementById('assets-total').textContent = '· ' + fmt(totalAssets);
+  const monthlyIncome = income * (30 / currentPeriodDays);
+  const fiGoal = userSettings.fi_goal || 35000000;
+  const fiPct = Math.min((monthlyIncome / fiGoal * 100), 100).toFixed(1);
+  document.getElementById('fi-current').textContent = fmt(monthlyIncome) + ' / mes';
+  document.getElementById('fi-goal-label').textContent = 'Meta: ' + fmt(fiGoal);
+  document.getElementById('fi-bar').style.width = fiPct + '%';
+  document.getElementById('fi-pct').textContent = fiPct + '% alcanzado';
+  renderAssets();
+  renderTransactions(txs);
+  renderChart(txs);
+  renderSankey(txs);
+}
+
+function renderAssets() {
+  const total = assets.reduce((s,a) => s+a.value, 0);
+  const byType = {};
+  assets.forEach(a => { byType[a.type] = (byType[a.type]||0) + a.value; });
+  document.getElementById('asset-bar').innerHTML = Object.entries(byType).map(([t,v]) =>
+    `<div class="asset-bar-seg" style="width:${total>0?v/total*100:0}%;background:${ASSET_COLORS[t]||'#888'}"></div>`).join('');
+  document.getElementById('asset-legend').innerHTML = Object.entries(byType).map(([t,v]) =>
+    `<div class="legend-item"><div class="legend-dot" style="background:${ASSET_COLORS[t]||'#888'}"></div>${t} ${total>0?Math.round(v/total*100):0}%</div>`).join('');
+  const icons = {'Propiedades':'🏠','Efectivo':'💵','Inversiones':'📈','Crypto':'₿','Vehículos':'🚗','Otros':'📦'};
+  document.getElementById('asset-table').innerHTML = assets.length === 0
+    ? '<div style="text-align:center;padding:20px 0;color:var(--muted);font-size:13px">Sin activos. Tocá + Agregar ↑</div>'
+    : assets.map(a => {
+        const pct = total > 0 ? (a.value/total*100).toFixed(1) : 0;
+        const col = ASSET_COLORS[a.type]||'#888';
+        return `<div class="asset-row" onclick="deleteAsset('${a.id}')">
+          <div class="asset-icon" style="background:${col}20">${icons[a.type]||'📦'}</div>
+          <div style="flex:0 1 auto;min-width:0"><div class="asset-name" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${a.name}</div><div class="asset-sub">${a.type}</div></div>
+          <div class="mini-bar-wrap"><div class="mini-bar" style="width:${pct}%;background:${col}"></div></div>
+          <div class="asset-right"><div class="asset-value">${fmt(a.value)}</div><div class="asset-pct">${pct}%</div></div>
+        </div>`;
+      }).join('');
+}
+
+function renderTransactions(txs) {
+  const sorted = [...txs].slice(0, 25);
+  document.getElementById('tx-list').innerHTML = sorted.length === 0
+    ? '<div style="text-align:center;padding:24px 0;color:var(--muted);font-size:13px">Sin movimientos en este período</div>'
+    : sorted.map(t => {
+        const sign = t.type==='income' ? '+' : '-';
+        const col = t.type==='income' ? 'var(--green)' : 'var(--red)';
+        const icon = CAT_ICONS[t.category] || '📦';
+        const date = new Date(t.date+'T12:00:00').toLocaleDateString('es-PY', { day:'numeric', month:'short' });
+        return `<div class="tx-row" onclick="deleteTx('${t.id}')">
+          <div class="tx-icon">${icon}</div>
+          <div style="flex:1;min-width:0"><div class="tx-name" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t.desc||t.category}</div><div class="tx-cat">${t.category} · ${date}</div></div>
+          <div style="text-align:right;flex-shrink:0"><div class="tx-amount" style="color:${col}">${sign}${fmt(t.amount)}</div></div>
+        </div>`;
+      }).join('');
+}
+
+function renderChart(txs) {
+  const days = {};
+  const limit = Math.min(currentPeriodDays, 30);
+  const now = new Date();
+  for (let i = limit-1; i >= 0; i--) {
+    const d = new Date(now); d.setDate(d.getDate()-i);
+    days[d.toISOString().split('T')[0]] = { income:0, expense:0 };
+  }
+  txs.forEach(t => { if (days[t.date]) { t.type==='income' ? days[t.date].income+=t.amount : days[t.date].expense+=t.amount; }});
+  const labels = Object.keys(days).map(d => new Date(d+'T12:00:00').toLocaleDateString('es-PY',{day:'numeric',month:'short'}));
+  const incomes = Object.values(days).map(d => d.income);
+  const expenses = Object.values(days).map(d => d.expense);
+  const canvas = document.getElementById('flowChart');
+  if (flowChart) flowChart.destroy();
+  flowChart = new Chart(canvas, {
+    type: 'bar',
+    data: { labels, datasets: [
+      { label:'Ingresos', data:incomes, backgroundColor:'#00e5a040', borderColor:'#00e5a0', borderWidth:1, borderRadius:4 },
+      { label:'Gastos', data:expenses, backgroundColor:'#ff4d6d30', borderColor:'#ff4d6d', borderWidth:1, borderRadius:4 }
+    ]},
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false}, tooltip:{ backgroundColor:'#1c1c28', titleColor:'#8888aa', bodyColor:'#f0f0f8', borderColor:'#2a2a3a', borderWidth:1, callbacks:{ label: ctx => fmt(ctx.raw) }}},
+      scales:{
+        x:{ grid:{color:'#2a2a3a33'}, ticks:{color:'#8888aa',font:{size:10},maxTicksLimit:7} },
+        y:{ grid:{color:'#2a2a3a33'}, ticks:{color:'#8888aa',font:{size:10},callback:v=>fmt(v)}, beginAtZero:true }
+      }
+    }
+  });
+}
+
+function renderSankey(txs) {
+  const wrap = document.getElementById('sankey-wrap');
+  const income = txs.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
+  const expense = txs.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+  const surplus = income - expense;
+  if (income === 0 && expense === 0) {
+    wrap.innerHTML = '<div style="text-align:center;padding:32px 0;color:var(--muted);font-size:13px">Agregá movimientos para ver el flujo</div>';
+    return;
+  }
+  const incomeGroups = {};
+  txs.filter(t => t.type === 'income').forEach(t => { incomeGroups[t.category] = (incomeGroups[t.category] || 0) + t.amount; });
+  const expenseGroups = {};
+  txs.filter(t => t.type === 'expense').forEach(t => { expenseGroups[t.category] = (expenseGroups[t.category] || 0) + t.amount; });
+  const W = wrap.clientWidth || 320;
+  const incomeEntries = Object.entries(incomeGroups).sort((a, b) => b[1] - a[1]);
+  const expenseEntries = Object.entries(expenseGroups).sort((a, b) => b[1] - a[1]);
+  const rightNodes = [...expenseEntries];
+  if (surplus > 0) rightNodes.push(['Superávit', surplus]);
+  const ROW_H = 22, GAP = 6;
+  const leftCount = incomeEntries.length, rightCount = rightNodes.length;
+  const svgH = Math.max(leftCount, rightCount) * (ROW_H + GAP) + 60;
+  const LX = 0, LW = 110, MX = W / 2 - 30, MW = 60, RX = W - 110, RW = 110, MH = svgH - 40;
+  const CAT_COL = { 'Salario':'#00e5a0','Freelance':'#4d9fff','Airbnb':'#a78bfa','Inversiones':'#fbbf24','Otro':'#8888aa','Vivienda':'#ff4d6d','Comida':'#fb923c','Transporte':'#4d9fff','Salud':'#f472b6','Entretenimiento':'#a78bfa','Compras':'#fbbf24','Servicios':'#8888aa','Superávit':'#00e5a0' };
+  const getCol = cat => CAT_COL[cat] || '#8888aa';
+  const hexAlpha = (hex, a) => { const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16); return `rgba(${r},${g},${b},${a})`; };
+  const leftY = i => { const totalH=leftCount*ROW_H+(leftCount-1)*GAP; return (svgH-totalH)/2+i*(ROW_H+GAP); };
+  const rightY = i => { const totalH=rightCount*ROW_H+(rightCount-1)*GAP; return (svgH-totalH)/2+i*(ROW_H+GAP); };
+  const midY = (svgH - MH) / 2;
+  let paths = '', leftBars = '', rightBars = '', labels = '';
+  incomeEntries.forEach(([cat, val], i) => {
+    const y = leftY(i), col = getCol(cat);
+    leftBars += `<rect x="${LX}" y="${y}" width="${LW}" height="${ROW_H}" rx="6" fill="${hexAlpha(col,0.12)}" stroke="${col}" stroke-width="1"/>`;
+    labels += `<text x="${LX+8}" y="${y+14}" fill="${col}" font-size="11" font-family="Sora,sans-serif" font-weight="600">${CAT_ICONS[cat]||'📦'} ${cat}</text>`;
+    labels += `<text x="${LX+LW-6}" y="${y+14}" fill="${col}" font-size="10" font-family="JetBrains Mono,monospace" text-anchor="end">${fmt(val)}</text>`;
+    const srcY = y+ROW_H/2;
+    const dstYTop = midY+(income>0?(incomeEntries.slice(0,i).reduce((s,[,v])=>s+v,0)/income)*MH:0);
+    const dstYMid = dstYTop+(income>0?val/income*MH:0)/2;
+    paths += `<path d="M${LX+LW},${srcY} C${MX-40},${srcY} ${MX-10},${dstYMid} ${MX},${dstYMid}" fill="none" stroke="${col}" stroke-width="${Math.max(1.5,val/income*MH*0.7)}" stroke-opacity="0.35" stroke-linecap="round"/>`;
+  });
+  paths += `<rect x="${MX}" y="${midY}" width="${MW}" height="${MH}" rx="8" fill="#00e5a020" stroke="#00e5a060" stroke-width="1.5"/>`;
+  labels += `<text x="${MX+MW/2}" y="${midY+MH/2-8}" fill="#00e5a0" font-size="10" font-family="Sora,sans-serif" font-weight="600" text-anchor="middle">Cash</text>`;
+  labels += `<text x="${MX+MW/2}" y="${midY+MH/2+6}" fill="#00e5a0" font-size="10" font-family="Sora,sans-serif" font-weight="600" text-anchor="middle">Flow</text>`;
+  labels += `<text x="${MX+MW/2}" y="${midY+MH/2+20}" fill="#8888aa" font-size="9" font-family="JetBrains Mono,monospace" text-anchor="middle">${fmt(income)}</text>`;
+  let usedH = 0;
+  rightNodes.forEach(([cat, val], i) => {
+    const y = rightY(i), col = getCol(cat), ratio = val/income;
+    rightBars += `<rect x="${RX}" y="${y}" width="${RW}" height="${ROW_H}" rx="6" fill="${hexAlpha(col,0.12)}" stroke="${col}" stroke-width="1"/>`;
+    labels += `<text x="${RX+8}" y="${y+14}" fill="${col}" font-size="11" font-family="Sora,sans-serif" font-weight="600">${CAT_ICONS[cat]||'📦'} ${cat}</text>`;
+    labels += `<text x="${RX+RW-6}" y="${y+14}" fill="${col}" font-size="10" font-family="JetBrains Mono,monospace" text-anchor="end">${fmt(val)}</text>`;
+    const srcYMid = midY+usedH+ratio*MH/2;
+    usedH += ratio*MH;
+    paths += `<path d="M${MX+MW},${srcYMid} C${MX+MW+10},${srcYMid} ${RX-40},${y+ROW_H/2} ${RX},${y+ROW_H/2}" fill="none" stroke="${col}" stroke-width="${Math.max(1.5,ratio*MH*0.7)}" stroke-opacity="0.35" stroke-linecap="round"/>`;
+  });
+  wrap.innerHTML = `<svg viewBox="0 0 ${W} ${svgH}" width="100%" style="display:block;overflow:visible">${paths}${leftBars}${rightBars}${labels}</svg>`;
+}
+
+function openModal(id) {
+  document.getElementById(id).classList.add('open');
+  if (id==='settingsModal') {
+    document.getElementById('s-name').value = userSettings.name||'';
+    document.getElementById('s-savings').value = userSettings.savings_goal||'';
+    document.getElementById('s-fi').value = userSettings.fi_goal||35000000;
+  }
+}
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+function maybeClose(e,id) { if(e.target.id===id) closeModal(id); }
+function setTxType(type) {
+  currentTxType = type;
+  document.getElementById('tab-expense').classList.toggle('active', type==='expense');
+  document.getElementById('tab-income').classList.toggle('active', type==='income');
+}
+
+async function addTransaction() {
+  const desc = document.getElementById('tx-desc').value.trim();
+  const amount = parseFloat(document.getElementById('tx-amount').value);
+  const date = document.getElementById('tx-date').value;
+  const cat = document.getElementById('tx-cat').value;
+  if (!amount||amount<=0) { alert('Ingresá un monto válido'); return; }
+  if (!date) { alert('Seleccioná una fecha'); return; }
+  const btn = document.getElementById('btn-save-tx');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>Guardando...';
+  const { data, error } = await sb.from('transactions').insert({ user_id: currentUser.id, desc, amount, date, category: cat, type: currentTxType }).select().single();
+  btn.disabled = false; btn.textContent = 'Guardar';
+  if (!error && data) { transactions.unshift(data); document.getElementById('tx-desc').value = ''; document.getElementById('tx-amount').value = ''; closeModal('addModal'); render(); }
+}
+
+async function deleteTx(id) {
+  if (!confirm('¿Eliminar este movimiento?')) return;
+  await sb.from('transactions').delete().eq('id', id);
+  transactions = transactions.filter(t => t.id !== id);
+  render();
+}
+
+async function addAsset() {
+  const name = document.getElementById('asset-name').value.trim();
+  const value = parseFloat(document.getElementById('asset-value').value);
+  const type = document.getElementById('asset-type').value;
+  if (!name) { alert('Ingresá un nombre'); return; }
+  if (!value||value<=0) { alert('Ingresá un valor válido'); return; }
+  const btn = document.getElementById('btn-save-asset');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>Guardando...';
+  const { data, error } = await sb.from('assets').insert({ user_id: currentUser.id, name, value, type }).select().single();
+  btn.disabled = false; btn.textContent = 'Guardar Activo';
+  if (!error && data) { assets.unshift(data); document.getElementById('asset-name').value = ''; document.getElementById('asset-value').value = ''; closeModal('assetModal'); render(); }
+}
+
+async function deleteAsset(id) {
+  if (!confirm('¿Eliminar este activo?')) return;
+  await sb.from('assets').delete().eq('id', id);
+  assets = assets.filter(a => a.id !== id);
+  render();
+}
+
+async function saveSettings() {
+  const s = { user_id: currentUser.id, name: document.getElementById('s-name').value || 'Usuario', savings_goal: parseFloat(document.getElementById('s-savings').value)||0, fi_goal: parseFloat(document.getElementById('s-fi').value)||35000000, updated_at: new Date().toISOString() };
+  await sb.from('settings').upsert(s);
+  userSettings = s;
+  closeModal('settingsModal');
+  render();
+}
+
+document.getElementById('tx-date').value = new Date().toISOString().split('T')[0];
+
+sb.auth.onAuthStateChange(async (event, session) => {
+  if (session?.user) { currentUser = session.user; showScreen('app'); await loadData(); }
+  else { currentUser = null; showScreen('auth'); }
+});
+</script>
+</body>
+</html>
