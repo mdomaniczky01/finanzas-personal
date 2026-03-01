@@ -14,7 +14,7 @@
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0f172a;--card:#1e293b;--border:#334155;--text:#f1f5f9;--text2:#94a3b8;--text3:#64748b;--green:#10b981;--red:#ef4444;--blue:#3b82f6;--green-bg:#064e3b;--red-bg:#7f1d1d}
 html,body{background:var(--bg);color:var(--text);font-family:'SF Pro Display','SF Pro',system-ui,-apple-system,sans-serif;min-height:100vh;overflow-x:hidden}
-body{max-width:480px;margin:0 auto;padding-bottom:80px}
+body{max-width:480px;margin:0 auto;padding-bottom:80px;padding-top:env(safe-area-inset-top,44px)}
 button{font-family:inherit;cursor:pointer}
 input,select{font-family:inherit}
 
@@ -472,8 +472,8 @@ function renderSankey(incByCat, expByCat) {
   if (!totalInc && !totalExp) return '<div style="text-align:center;padding:24px;color:#64748b;font-size:13px">Agregá ingresos y gastos para ver el flujo</div>';
   
   const surplus = Math.max(0, totalInc - totalExp);
-  const W = 540, H = 360, nw = 12, pad = 5;
-  const lx = 30, mx = W/2-nw/2, rx = W-30-nw;
+  const W = 700, H = 400, nw = 12, pad = 5;
+  const lx = 100, mx = W/2-nw/2, rx = W-100-nw;
   
   // Income nodes
   const incItems = CATS.income.filter(c => (incByCat[c.id]||0) > 0).map(c => ({...c, value: incByCat[c.id]}));
@@ -524,15 +524,15 @@ function renderSankey(incByCat, expByCat) {
   let nodes = '';
   incNodes.forEach(n => {
     nodes += `<rect x="${lx}" y="${n.y}" width="${nw}" height="${n.h}" rx="4" fill="${n.color}"/>`;
-    nodes += `<text x="${lx-4}" y="${n.y+n.h/2+4}" text-anchor="end" font-size="9" fill="#cbd5e1">${n.icon} ${n.name}</text>`;
+    nodes += `<text x="${lx-6}" y="${n.y+n.h/2+4}" text-anchor="end" font-size="11" fill="#cbd5e1">${n.icon} ${n.name}</text>`;
   });
   
   nodes += `<rect x="${mx}" y="${midY}" width="${nw}" height="${midH}" rx="6" fill="#3b82f6"/>`;
-  nodes += `<text x="${mx+nw/2}" y="${midY-6}" text-anchor="middle" font-size="10" font-weight="600" fill="#93c5fd">Cash Flow</text>`;
+  nodes += `<text x="${mx+nw/2}" y="${midY-8}" text-anchor="middle" font-size="12" font-weight="600" fill="#93c5fd">Cash Flow</text>`;
   
   expNodes.forEach(n => {
     nodes += `<rect x="${rx}" y="${n.y}" width="${nw}" height="${n.h}" rx="4" fill="${n.color}"/>`;
-    nodes += `<text x="${rx+nw+5}" y="${n.y+n.h/2+4}" text-anchor="start" font-size="9" fill="#cbd5e1">${n.icon} ${n.name}</text>`;
+    nodes += `<text x="${rx+nw+6}" y="${n.y+n.h/2+4}" text-anchor="start" font-size="11" fill="#cbd5e1">${n.icon} ${n.name}</text>`;
   });
   
   return `<div style="width:100%;overflow-x:auto"><svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="display:block;max-width:100%">${paths}${nodes}</svg></div>`;
