@@ -576,7 +576,8 @@ async function addTransaction() {
   btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>Guardando...';
   const { data, error } = await sb.from('transactions').insert({ user_id: currentUser.id, desc, amount, date, category: cat, type: currentTxType }).select().single();
   btn.disabled = false; btn.textContent = 'Guardar';
-  if (!error && data) { transactions.unshift(data); document.getElementById('tx-desc').value = ''; document.getElementById('tx-amount').value = ''; closeModal('addModal'); render(); }
+  if (error) { alert('Error: ' + JSON.stringify(error)); return; }
+  if (data) { transactions.unshift(data); document.getElementById('tx-desc').value = ''; document.getElementById('tx-amount').value = ''; closeModal('addModal'); render(); }
 }
 
 async function deleteTx(id) {
