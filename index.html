@@ -229,7 +229,7 @@
       <button class="tab-btn active" id="tab-expense" onclick="setTxType('expense')">Gasto</button>
       <button class="tab-btn" id="tab-income" onclick="setTxType('income')">Ingreso</button>
     </div>
-    <div class="form-group"><label class="form-label">Descripción</label><input type="text" class="form-input" id="tx-desc" placeholder="ej. Supermercado"></div>
+    <div class="form-group"><label class="form-label">Descripción</label><input type="text" class="form-input" id="tx-description" placeholder="ej. Supermercado"></div>
     <div class="form-row">
       <div class="form-group"><label class="form-label">Monto (₲)</label><input type="number" class="form-input" id="tx-amount" placeholder="0" inputmode="numeric"></div>
       <div class="form-group"><label class="form-label">Fecha</label><input type="date" class="form-input" id="tx-date"></div>
@@ -456,7 +456,7 @@ function renderTransactions(txs) {
         const date = new Date(t.date+'T12:00:00').toLocaleDateString('es-PY', { day:'numeric', month:'short' });
         return `<div class="tx-row" onclick="deleteTx('${t.id}')">
           <div class="tx-icon">${icon}</div>
-          <div style="flex:1;min-width:0"><div class="tx-name" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t.desc||t.category}</div><div class="tx-cat">${t.category} · ${date}</div></div>
+          <div style="flex:1;min-width:0"><div class="tx-name" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t.description||t.category}</div><div class="tx-cat">${t.category} · ${date}</div></div>
           <div style="text-align:right;flex-shrink:0"><div class="tx-amount" style="color:${col}">${sign}${fmt(t.amount)}</div></div>
         </div>`;
       }).join('');
@@ -566,7 +566,7 @@ function setTxType(type) {
 }
 
 async function addTransaction() {
-  const desc = document.getElementById('tx-desc').value.trim();
+  const description = document.getElementById('tx-description').value.trim();
   const amount = parseFloat(document.getElementById('tx-amount').value);
   const date = document.getElementById('tx-date').value;
   const cat = document.getElementById('tx-cat').value;
@@ -574,10 +574,10 @@ async function addTransaction() {
   if (!date) { alert('Seleccioná una fecha'); return; }
   const btn = document.getElementById('btn-save-tx');
   btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>Guardando...';
-  const { data, error } = await sb.from('transactions').insert({ user_id: currentUser.id, desc, amount, date, category: cat, type: currentTxType }).select().single();
+  const { data, error } = await sb.from('transactions').insert({ user_id: currentUser.id, description, amount, date, category: cat, type: currentTxType }).select().single();
   btn.disabled = false; btn.textContent = 'Guardar';
   if (error) { alert('Error: ' + JSON.stringify(error)); return; }
-  if (data) { transactions.unshift(data); document.getElementById('tx-desc').value = ''; document.getElementById('tx-amount').value = ''; closeModal('addModal'); render(); }
+  if (data) { transactions.unshift(data); document.getElementById('tx-description').value = ''; document.getElementById('tx-amount').value = ''; closeModal('addModal'); render(); }
 }
 
 async function deleteTx(id) {
