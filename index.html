@@ -574,6 +574,7 @@ async function addTransaction() {
   if (!date) { alert('Seleccioná una fecha'); return; }
   const btn = document.getElementById('btn-save-tx');
   btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>Guardando...';
+  alert('URL: ' + SUPABASE_URL + '\nKEY: ' + SUPABASE_ANON_KEY.substring(0,20));
   const { data, error } = await sb.from('transactions').insert({ user_id: currentUser.id, description, amount, date, category: cat, type: currentTxType }).select().single();
   btn.disabled = false; btn.textContent = 'Guardar';
   if (error) { alert('Error: ' + JSON.stringify(error)); return; }
